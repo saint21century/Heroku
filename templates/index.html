@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>Сайт очереди</title>
+   <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+   <link rel="stylesheet" type="text/css" href="/static/styles.css">
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+</head>
+<body>
+
+<div class="container mt-4">
+   <h1 class="text-center">Autocommits</h1>
+   <div class="row">
+      <div class="col-md-12">
+         <ul id="user-list" class="list-group">
+            <!-- Здесь будет список пользователей -->
+         </ul>
+      </div>
+   </div>
+
+   
+    <div class="next-btn">
+         <button id="dequeue" class="btn btn-primary btn-block mt-2">Дальше</button>
+      </div>
+
+    <div>
+        <input id="name-input" class="form-control" placeholder="Имя и фамилия">
+    </div>
+
+   <div class="row mt-2">
+    <div class="col-md-6">
+        <button id="enqueue" class="btn btn-success btn-block">Встать в очередь</button>
+     </div>
+        <div class="col-md-6">
+            <button id="detach" class="btn btn-danger btn-block">Отделить</button>
+         </div>
+     
+   </div>
+
+</div>
+
+<audio id="notification-sound" src="/static/notify.mp3"></audio>
+
+<script>
+   var socket = io.connect('http://' + document.domain + ':' + location.port);
+
+   socket.on('connect', function() {
+      console.log('Connected to server');
+   });
+
+   socket.on('queue_update', function(data) {
+      var userList = document.getElementById("user-list");
+      userList.innerHTML = "";
+      data.forEach(function(name) {
+         var li = document.createElement("li");
+         li.className = 'list-group-item d-flex justify-content-between align-items-center';
+         li.innerHTML = '<span class="user-info">' + name + '</span>' +
+            '<button class="btn btn-danger remove" data-name="' + name + '">Удалить из очереди</button>';
+         userList.appendChild(li);
+      });
+
+      var removeButtons = document.querySelectorAll('.remove');
+      removeButtons.forEach(function(button) {
+         button.addEventListener('click', function() {
+            var name = this.getAttribute('data-name');
+            socket.emit('remove', {name: name});
+         });
+      });
+   });
+
+   socket.on('play_sound', function() {
+      var audio = document.getElementById("notification-sound");
+      audio.play();
+   });
+
+   document.getElementById("enqueue").addEventListener("click", function() {
+      var name = document.getElementById("name-input").value;
+      if (name) {
+         socket.emit('enqueue', {name: name});
+         document.getElementById("name-input").value = "";
+      }
+   });
+
+   document.getElementById("dequeue").addEventListener("click", function() {
+      socket.emit('dequeue');
+   });
+
+   document.getElementById("detach").addEventListener("click", function() {
+      var detachedWindow = window.open('/', 'DetachedWindow', 'width=800,height=600');
+   });
+
+   socket.emit('get_queue');
+</script>
+
+</body>
+</html>
